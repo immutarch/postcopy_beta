@@ -1,6 +1,5 @@
 #!/bin/bash
 source /etc/ima-release
-source /etc/os-release
 
 ROOT_CONTAINER_PATH=/ima_root
 SUBVOLUME_CONTAINER_PATH=${ROOT_CONTAINER_PATH}/rootfs
@@ -92,7 +91,7 @@ switch_subvolume() {
 
 # Function to display status
 display_status() {
-    echo "Immutarch ${VERSION_ID}, branch: ${VARIANT_ID}, image version: ${BUILD_ID}"
+    echo "Immutarch ${IMAGE_ID}, branch: ${RELEASETYPE}, image version: ${OS_TAG}"
     echo "Built on: $(stat -c %y /etc/ima-release | cut -d '.' -f 1)"
     echo
     echo "Current Subvolume: $(cat /proc/cmdline | sed 's/.*subvol=//g' | cut -d ' ' -f 1)"

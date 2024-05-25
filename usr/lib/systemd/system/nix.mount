@@ -1,0 +1,13 @@
+[Unit]
+Description=Immutarch Offload - /nix
+After=ima-offload-pre.target
+ConditionPathExists=/nix
+
+[Mount]
+What=/home/.ima/offload/nix
+Where=/nix
+Type=none
+Options=bind
+
+[Install]
+WantedBy=ima-offload.target

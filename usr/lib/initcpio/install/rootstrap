@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-2.0-only
+
+build() {
+    add_binary findmnt
+    add_runscript
+}
+
+help() {
+    cat <<HELPEOF
+This mounts volatile directories on top of physical root
+HELPEOF
+}
+
+# vim: set ft=sh ts=4 sw=4 et:

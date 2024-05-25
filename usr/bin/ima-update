@@ -1,0 +1,112 @@
+#!/bin/bashbbebbe
+if [[ $EUID -ne 0 ]];
+then
+    exec pkexec --disable-internal-agent "$0" "$@"
+fi
+argdata=/tmp/ima-update-temparg
+ready_watcher=/tmp/ima-update-ready-to-deploy
+source /etc/ima-release
+
+endpoint=https://api.github.com/repos/immutarch/releases_${RELEASETYPE}/releases
+downloadpath=/home/.ima/updatecontainer
+
+get_img_details(){
+    stdout=$(jq)
+    stdout=$(echo "${stdout}" | jq 'del(.[] | select(.assets[].state != "uploaded"))')
+    os_tag_name=$(echo "${stdout}" | jq -er '[ .[] | select(.prerelease==false) ] | first | .tag_name')
+    download_img_id=$(echo "${stdout}" | jq -er '[ .[] | select(.prerelease==false) ] | first | .assets[] | .url' | head -n1)
+    download_sha_id=$(echo "${stdout}" | jq -er '[ .[] | select(.prerelease==false) ] | first | .assets[] | .url' | tail -n1)
+    if [[ "${os_tag_name}" == "${OS_TAG}" ]]; then
+        echo "System up to date."
+    elif [[ "${os_tag_name}" > "${OS_TAG}" ]]; then
+        echo -e "OS_TAG_NAME=$os_tag_name\nDL_IMG=$download_img_url\nDL_SHA=$download_sha256_url\nGH_IMG_DL=$download_img_id\nGH_SHA_DL=$download_sha_id" > ${argdata}
+        echo "Update available. OS Update: ${os_tag_name}"
+    else
+        echo -e "Your version (${OS_TAG}) is newer than currently available (${os_tag_name}).\nPlease wait for next update to appear available in branch \"${RELEASETYPE}\" for installation."
+    fi
+}
+
+updatecheck(){
+    curl --http1.1 -L -s "${endpoint}" | get_img_details
+    if [[ -f "${argdata}" ]]; then
+        exit 7
+    else
+        exit 1
+    fi
+}
+
+verintg(){
+    echo "Verifying update file integrity..."
+    CURR_SHA=$(echo $(sha256sum ${downloadpath}/${OS_TAG_NAME}/${OS_TAG_NAME}.img.zst) | awk '{print $1}')
+    if [[ "${CURR_SHA}" == "$(cat ${downloadpath}/${OS_TAG_NAME}/${OS_TAG_NAME}.img.zst.sha256)" ]]; then
+        touch ${ready_watcher}
+        echo "Update file download complete. The system is ready to update."
+    else
+        rm -rf ${downloadpath}/${OS_TAG_NAME}
+        echo "Verification failed. Download contents erased."
+        exit 1
+    fi
+}
+
+dlupd(){
+    source ${argdata}
+    if [[ -f "${downloadpath}/${OS_TAG_NAME}/${OS_TAG_NAME}.img.zst" ]] && [[ -f "${downloadpath}/${OS_TAG_NAME}/${OS_TAG_NAME}.img.zst.sha256" ]]; then
+        verintg
+    else
+        mkdir -p ${downloadpath}/${OS_TAG_NAME}
+        echo "Downloading update files..."
+        curl --http1.1 -L -H "Accept: application/octet-stream" -o ${downloadpath}/${OS_TAG_NAME}/${OS_TAG_NAME}.img.zst "${GH_IMG_DL}"
+        curl --http1.1 -L -H "Accept: application/octet-stream" -o ${downloadpath}/${OS_TAG_NAME}/${OS_TAG_NAME}.img.zst.sha256 "${GH_SHA_DL}"
+        verintg
+    fi
+}
+
+if [ -n "$1" ]; then
+    case "$1" in
+    "check")
+        rm -f ${argdata} ${ready_watcher}
+	    updatecheck
+        ;;
+    "download-update")
+        if [[ -f "${argdata}" ]]; then
+            dlupd
+        else
+            echo "Update arguments are not yet available. Please try checking for updates first."
+            exit 1
+        fi
+        ;;
+    "apply-now")
+        if [[ -f "${ready_watcher}" ]]; then
+            ima-update-os ${argdata}
+            exit 7
+        fi
+        if [[ -f "${argdata}" ]]; then
+            dlupd
+            if [[ -f "${ready_watcher}" ]]; then
+                ima-update-os ${argdata}
+                exit 7
+            fi
+        else
+            echo -e "No update arguments set. Checking for updates...\n"
+            updatecheck
+            dlupd
+            if [[ -f "${ready_watcher}" ]]; then
+                ima-update-os ${argdata}
+                exit 7
+            fi
+        fi
+        ;;
+    "-d")
+        echo "No debug support check"
+        updatecheck
+        ;;
+    "*")
+        echo "Invalid option $1"
+        exit 1
+        ;;
+    esac
+    shift
+else
+    echo "No option passed."
+    exit 255
+fi

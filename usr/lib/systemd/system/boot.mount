@@ -1,0 +1,14 @@
+[Unit]
+Description=Boot Directory Bind-Mount (/var/boot -> /boot)
+Requires=ima-mkvarboot.service
+After=ima-mkvarboot.service
+ConditionPathIsReadWrite=!/
+
+[Mount]
+What=/var/boot
+Where=/boot
+Type=none
+Options=bind
+
+[Install]
+WantedBy=local-fs.target

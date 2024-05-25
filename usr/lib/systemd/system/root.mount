@@ -1,0 +1,11 @@
+[Unit]
+Description=Immutarch Offload - /root
+
+[Mount]
+What=/home/.ima/offload/root
+Where=/root
+Type=none
+Options=bind
+
+[Install]
+WantedBy=ima-offload.target

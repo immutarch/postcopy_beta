@@ -1,0 +1,11 @@
+[Unit]
+Description=Immutarch Offload - /srv
+
+[Mount]
+What=/home/.ima/offload/srv
+Where=/srv
+Type=none
+Options=bind
+
+[Install]
+WantedBy=ima-offload.target

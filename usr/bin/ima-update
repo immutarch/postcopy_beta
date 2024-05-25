@@ -1,4 +1,4 @@
-#!/bin/bashbbebbe
+#!/bin/bash
 if [[ $EUID -ne 0 ]];
 then
     exec pkexec --disable-internal-agent "$0" "$@"

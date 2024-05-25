@@ -14,13 +14,14 @@ get_img_details(){
     stdout=$(jq)
     stdout=$(echo "${stdout}" | jq 'del(.[] | select(.assets[].state != "uploaded"))')
     os_tag_name=$(echo "${stdout}" | jq -er '[ .[] | select(.prerelease==false) ] | first | .tag_name')
+    image_name=$(echo "${stdout}" | jq 'del(.[] | select(.assets[].state != "uploaded"))' | jq -er '[ .[] | select(.prerelease==false) ] | first | .name')
     download_img_id=$(echo "${stdout}" | jq -er '[ .[] | select(.prerelease==false) ] | first | .assets[] | .url' | head -n1)
     download_sha_id=$(echo "${stdout}" | jq -er '[ .[] | select(.prerelease==false) ] | first | .assets[] | .url' | tail -n1)
     if [[ "${os_tag_name}" == "${OS_TAG}" ]]; then
         echo "System up to date."
     elif [[ "${os_tag_name}" > "${OS_TAG}" ]]; then
-        echo -e "OS_TAG_NAME=$os_tag_name\nDL_IMG=$download_img_url\nDL_SHA=$download_sha256_url\nGH_IMG_DL=$download_img_id\nGH_SHA_DL=$download_sha_id" > ${argdata}
-        echo "Update available. OS Update: ${os_tag_name}"
+        echo -e "OS_TAG_NAME=$os_tag_name\nIMAGEFILE=$image_name\n=$download_img_url\nDL_SHA=$download_sha256_url\nGH_IMG_DL=$download_img_id\nGH_SHA_DL=$download_sha_id" > ${argdata}
+        echo "Update available. OS Update: ${os_tag_name} (Image: ${image_name})"
     else
         echo -e "Your version (${OS_TAG}) is newer than currently available (${os_tag_name}).\nPlease wait for next update to appear available in branch \"${RELEASETYPE}\" for installation."
     fi
@@ -37,12 +38,12 @@ updatecheck(){
 
 verintg(){
     echo "Verifying update file integrity..."
-    CURR_SHA=$(echo $(sha256sum ${downloadpath}/${OS_TAG_NAME}/${OS_TAG_NAME}.img.zst) | awk '{print $1}')
-    if [[ "${CURR_SHA}" == "$(cat ${downloadpath}/${OS_TAG_NAME}/${OS_TAG_NAME}.img.zst.sha256)" ]]; then
+    CURR_SHA=$(echo $(sha256sum ${downloadpath}/${IMAGEFILE}/${IMAGEFILE}.img.zst) | awk '{print $1}')
+    if [[ "${CURR_SHA}" == "$(cat ${downloadpath}/${IMAGEFILE}/${IMAGEFILE}.img.zst.sha256)" ]]; then
         touch ${ready_watcher}
         echo "Update file download complete. The system is ready to update."
     else
-        rm -rf ${downloadpath}/${OS_TAG_NAME}
+        rm -rf ${downloadpath}/${IMAGEFILE}
         echo "Verification failed. Download contents erased."
         exit 1
     fi
@@ -50,13 +51,13 @@ verintg(){
 
 dlupd(){
     source ${argdata}
-    if [[ -f "${downloadpath}/${OS_TAG_NAME}/${OS_TAG_NAME}.img.zst" ]] && [[ -f "${downloadpath}/${OS_TAG_NAME}/${OS_TAG_NAME}.img.zst.sha256" ]]; then
+    if [[ -f "${downloadpath}/${IMAGEFILE}/${IMAGEFILE}.img.zst" ]] && [[ -f "${downloadpath}/${IMAGEFILE}/${IMAGEFILE}.img.zst.sha256" ]]; then
         verintg
     else
-        mkdir -p ${downloadpath}/${OS_TAG_NAME}
+        mkdir -p ${downloadpath}/${IMAGEFILE}
         echo "Downloading update files..."
-        curl --http1.1 -L -H "Accept: application/octet-stream" -o ${downloadpath}/${OS_TAG_NAME}/${OS_TAG_NAME}.img.zst "${GH_IMG_DL}"
-        curl --http1.1 -L -H "Accept: application/octet-stream" -o ${downloadpath}/${OS_TAG_NAME}/${OS_TAG_NAME}.img.zst.sha256 "${GH_SHA_DL}"
+        curl --http1.1 -L -H "Accept: application/octet-stream" -o ${downloadpath}/${IMAGEFILE}/${IMAGEFILE}.img.zst "${GH_IMG_DL}"
+        curl --http1.1 -L -H "Accept: application/octet-stream" -o ${downloadpath}/${IMAGEFILE}/${IMAGEFILE}.img.zst.sha256 "${GH_SHA_DL}"
         verintg
     fi
 }

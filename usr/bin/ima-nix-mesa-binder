@@ -1,0 +1,26 @@
+#!/bin/bash
+
+mkdir -p /etc/tmpfiles.d
+get_dri_info(){
+    MESA_DRIVERS_PATH=$(nixGL env | grep LIBGL_DRIVERS_PATH | cut -d '=' -f 2 | sed 's/\/lib\/dri//g' | sed 's/:/ /g')
+    for driver in ${MESA_DRIVERS_PATH}
+    do
+        DRIVER_FILE=$(file ${driver}/lib/libEGL_mesa.so.0.0.0 | cut -d ' ' -f 3)
+        if [[ "${DRIVER_FILE}" == "64-bit" ]]; then
+            DRIVER_64BIT=${driver}
+        else
+            DRIVER_32BIT=${driver}
+        fi
+    done
+    echo "64-bit driver path: ${DRIVER_64BIT} | This will be symlinked to /run/opengl-driver"
+    echo "L+ /run/opengl-driver - - - - ${DRIVER_64BIT}" > /etc/tmpfiles.d/99-nix-ogl-64b.conf
+    echo "32-bit driver path: ${DRIVER_32BIT} | This will be symlinked to /run/opengl-driver-32"
+    echo "L+ /run/opengl-driver-32 - - - - ${DRIVER_32BIT}" > /etc/tmpfiles.d/99-nix-ogl-32b.conf
+    sudo systemd-tmpfiles --create
+}
+
+if [[ "$(which nixGL)" ]]; then
+    get_dri_info
+else
+    echo "nixGL is not installed on this system, please run ima-nix mesa-config"
+fi

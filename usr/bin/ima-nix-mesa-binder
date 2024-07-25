@@ -13,10 +13,9 @@ get_dri_info(){
         fi
     done
     echo "64-bit driver path: ${DRIVER_64BIT} | This will be symlinked to /run/opengl-driver"
-    echo "L+ /run/opengl-driver - - - - ${DRIVER_64BIT}" > /etc/tmpfiles.d/99-nix-ogl-64b.conf
+    ima-write-priv /etc/tmpfiles.d/99-nix-ogl-64b.conf "L+ /run/opengl-driver - - - - ${DRIVER_64BIT}"
     echo "32-bit driver path: ${DRIVER_32BIT} | This will be symlinked to /run/opengl-driver-32"
-    echo "L+ /run/opengl-driver-32 - - - - ${DRIVER_32BIT}" > /etc/tmpfiles.d/99-nix-ogl-32b.conf
-    sudo systemd-tmpfiles --create
+    ima-write-priv /etc/tmpfiles.d/99-nix-ogl-32b.conf "L+ /run/opengl-driver-32 - - - - ${DRIVER_32BIT}"
 }
 
 if [[ "$(which nixGL)" ]]; then

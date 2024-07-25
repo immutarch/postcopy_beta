@@ -1,0 +1,40 @@
+#!/bin/bash
+
+if [[ $EUID -ne 0 ]];
+then
+    exec pkexec --disable-internal-agent "$0" "$@"
+fi
+
+write_tmpfiles(){
+    mkdir -p "$(dirname "$1")" && echo "$2" > "$1"
+    systemd-tmpfiles --create
+}
+
+
+set_hostname(){
+    hostnamectl set-hostname "$2"
+}
+
+write_general(){
+    if [[ ! $(touch "$(dirname "$1")/tempfile" > /dev/null 2>&1) ]]; then
+        echo "This directory is read-only. You may override that by using ima-readonly {disable/enable}."
+    else
+    rm "$(dirname "$1")/tempfile"
+        mkdir -p "$(dirname "$1")" && echo "$2" > "$1"
+    fi
+}
+if [[ $1 ]]; then
+    if [[ $2 ]]; then
+        if [[ $1 == *"tmpfiles.d"* ]]; then
+            write_tmpfiles "$@"
+        elif [[ $1 == "set-hostname" ]]; then
+            set_hostname "$@"
+        else
+            write_general "$@"
+        fi
+    else
+        echo "Argument to write to \"$1\" was not set."
+    fi
+else
+    echo "No command."
+fi

@@ -11,7 +11,7 @@ install_nix(){
     fi
     if [[ "$HAS_CONFIGURED" == "true" ]]; then
         nix-env -iA nixpkgs.$1
-        ch_ic
+        cleanup_seq
     fi
 }
 
@@ -20,15 +20,14 @@ nixgl-config(){
         HAS_NIXGL_REPO_CONFIGURED=true
     else
         echo "NixGL channel wasn't found, please wait..."
-        $ nix-channel --add https://github.com/nix-community/nixGL/archive/main.tar.gz nixgl
+        nix-channel --add https://github.com/nix-community/nixGL/archive/main.tar.gz nixgl
         nix-channel --update
         HAS_NIXGL_REPO_CONFIGURED=true
     fi
     if [[ "$HAS_NIXGL_REPO_CONFIGURED" == "true" ]]; then
         nix-env -iA nixgl.auto.nixGLDefault
-        ch_ic
-        echo "You will be required to enter your user's password to set-up Nix profile-wide MESA for graphical accelerated applications."
-        sudo ima-nix-mesa-binder
+        cleanup_seq
+        ima-nix-mesa-binder
     fi
 }
 

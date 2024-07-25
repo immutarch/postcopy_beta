@@ -177,13 +177,6 @@ class OOBEWindow(QMainWindow):
             print(f"Error fetching timezones: {e}")
             return ["UTC"]  # Fallback timezone
 
-    def show_timezone_page(self):
-        self.stacked_widget.setCurrentWidget(self.timezone_page)
-
-    def show_user_page(self):
-        self.selected_timezone = self.timezone_combobox.currentText()
-        self.stacked_widget.setCurrentWidget(self.user_page)
-
     def show_welcome_page(self):
         self.stacked_widget.setCurrentWidget(self.welcome_page)
 
@@ -191,14 +184,12 @@ class OOBEWindow(QMainWindow):
         self.stacked_widget.setCurrentWidget(self.timezone_page)
 
     def show_user_page(self):
+        self.selected_timezone = self.timezone_combobox.currentText()
         self.stacked_widget.setCurrentWidget(self.user_page)
 
     def validate_user_input(self):
         username = self.username_input.text().strip()
         password = self.password_input.text().strip()
-
-    def close_application(self):
-        self.close()
 
         if not username or not password:
             # Show an alert if username or password is empty
@@ -210,6 +201,9 @@ class OOBEWindow(QMainWindow):
             )
             return False
         return True
+
+    def close_application(self):
+        self.close()
 
     def finish_setup(self):
         if not self.validate_user_input():

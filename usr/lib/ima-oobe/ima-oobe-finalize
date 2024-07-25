@@ -36,7 +36,7 @@ case $key in
 esac
 done
 
-if [[ $TZ ]]; then
+if [[ $TZONE ]]; then
     echo "Setting timezone to \"${TZONE}\""
     timedatectl set-timezone ${TZONE}
 fi

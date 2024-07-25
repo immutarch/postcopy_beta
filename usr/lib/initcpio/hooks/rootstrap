@@ -15,6 +15,15 @@ run_latehook() {
             mount "$var_source" /new_root/var -o "$mountopts"
         fi
     fi
+
+    # Check if /new_root/var/overlays/etc/{upper,work} exist, and create them if not
+    if [ ! -d "/new_root/var/overlays/etc/upper" ]; then
+        mkdir -p /new_root/var/overlays/etc/upper
+    fi
+    if [ ! -d "/new_root/var/overlays/etc/work" ]; then
+        mkdir -p /new_root/var/overlays/etc/work
+    fi
+
     msg ":: mounting /etc overlay from '$var_source' on physical root"
     mount -t overlay /new_root/etc -o index=off,metacopy=off,lowerdir=/new_root/etc,upperdir=/new_root/var/overlays/etc/upper,workdir=/new_root/var/overlays/etc/work /new_root/etc
 }

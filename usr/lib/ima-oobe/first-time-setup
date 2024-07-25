@@ -1,0 +1,82 @@
+#!/bin/bash
+
+SCRIPT=$(realpath "$0")
+SCRIPTPATH=$(dirname "$SCRIPT")
+
+width=$(xdpyinfo 2>&1 | grep dimens | awk '{ print $2 }' | cut -dx -f1)
+echo "Screen width: $width"
+if [ "$width" -gt 2048 ]; then
+    xrandr --dpi 144
+    mkdir -p /etc/sddm.conf.d/
+    cat >/etc/sddm.conf.d/dpi.conf <<EOF
+[X11]
+ServerArguments=-nolisten tcp -dpi 144
+
+[Wayland]
+EnableHiDPI=true
+
+[X11]
+EnableHiDPI=true
+EOF
+    grep -q KScreen /etc/xdg/kdeglobals || cat >>/etc/xdg/kdeglobals <<EOF
+[KScreen]
+ScaleFactor=1.5
+ScreenScaleFactors=None-1=1.5;
+EOF
+    cat >/etc/xdg/kcmfonts <<EOF
+[General]
+forceFontDPI=144
+EOF
+fi
+
+sleep 0.2
+
+export HOME=/run/user/0/oobe-user
+rm -rf "$HOME"
+mkdir -p "$HOME"
+cd $HOME
+
+mkdir -p .config
+cd .config
+
+cat >kwinrc <<EOF
+[Compositing]
+OpenGLIsUnsafe=false
+
+[MouseBindings]
+CommandActiveTitlebar3=Nothing
+CommandInactiveTitlebar3=Nothing
+
+[org.kde.kdecoration2]
+ButtonsOnLeft=
+ButtonsOnRight=AX
+EOF
+
+cat >kwinrulesrc <<EOF
+[1]
+Description=Settings for feh
+below=true
+belowrule=2
+wmclass=feh
+wmclassmatch=1
+acceptfocusrule=2
+
+[General]
+count=2
+rules=1,2
+EOF
+
+mkdir -p feh
+cat >feh/buttons <<EOF
+pan
+zoom
+menu
+EOF
+
+kwin_x11 &
+
+sleep 0.2
+
+feh --zoom fill -N -F $(ls /usr/share/wallpapers/Next/contents/images/5120x2880* | head -n 1) &
+
+python ${SCRIPTPATH}/oobe.py && systemctl disable ima-oobe-prerun && usermod -p '*' root && exit 0

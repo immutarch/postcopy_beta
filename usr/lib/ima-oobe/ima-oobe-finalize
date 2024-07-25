@@ -1,0 +1,65 @@
+#!/bin/bash
+
+while [[ $# -gt 0 ]]
+do
+key="$1"
+case $key in
+    --tz)
+    TZONE="$2"
+    shift # past argument
+    shift # past value
+    ;;
+    --username)
+    USERNAME="$2"
+    shift # past argument
+    shift # past value
+    ;;
+    --password)
+    UPWD="$2"
+    shift # past argument
+    shift # past value
+    ;;
+    --hostname)
+    HNM="$2"
+    shift # past argument
+    shift # past value
+    ;;
+    --root_password)
+    RPWD="$2"
+    shift # past argument
+    shift # past value
+    ;;
+    *)    # unknown option
+    echo "Unknown option: $1"
+    exit 1
+    ;;
+esac
+done
+
+if [[ $TZ ]]; then
+    echo "Setting timezone to \"${TZONE}\""
+    timedatectl set-timezone ${TZONE}
+fi
+
+if [[ $USERNAME && $UPWD ]]; then
+    echo "Creating user \"${USERNAME}\"..."
+    useradd --create-home "${USERNAME}"
+    echo -e "${UPWD}\n${UPWD}" | passwd "${USERNAME}"
+    usermod -aG wheel "${USERNAME}"
+    usermod -aG nix-users "${USERNAME}"
+fi
+
+if [[ $HNM ]]; then
+    echo "Setting device hostname to \"${HNM}\"..."
+    ima-write-priv set-hostname "${HNM}"
+fi
+
+if [[ $RPWD ]]; then
+    echo "Adding root password..."
+    echo -e "${RPWD}\n${RPWD}" | passwd root
+fi
+
+echo "Setup complete."
+
+sleep 5
+

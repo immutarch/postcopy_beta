@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# OOBE pre-run service
+
+# Check if any non-system user exist beforehand
+# This will make sure that duplicate OOBE launches won't happen
+# after updates or any other stuff that relates to system recon
+
+IFUSER=$(id 1000 &>/dev/null || echo "fail")
+if [[ $IFUSER ]]; then
+    systemctl disable ima-oobe-prerun
+    exit 0
+else
+    # Assume no actual users exist, and go full ham
+    startx /usr/lib/ima-oobe/first-time-setup
+fi

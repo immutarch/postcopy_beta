@@ -7,7 +7,7 @@
 # after updates or any other stuff that relates to system recon
 
 IFUSER=$(id 1000 &>/dev/null || echo "fail")
-if [[ $IFUSER ]]; then
+if [[ ! $IFUSER ]]; then
     systemctl disable ima-oobe-prerun
     exit 0
 else

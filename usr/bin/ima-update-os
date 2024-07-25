@@ -4,7 +4,7 @@ then
     exec pkexec --disable-internal-agent "$0" "$@"
 fi
 argdata=$1
-ready_watcher=/tmp/ima-ready-to-deploy
+ready_watcher=/tmp/ima-update-ready-to-deploy
 downloadpath=/home/.ima/updatecontainer
 # We assume we entered this step only after confirming that we are okay to continue.
 verintg(){
@@ -60,7 +60,7 @@ if [[ -f ${argdata} ]]; then
     if [[ -f "${ready_watcher}" ]]; then
         source ${argdata}
         installcontainer=${downloadpath}/${IMAGEFILE}/${IMAGEFILE}.img.zst
-        installsha=${downloadpath}/${IMAGEFILE}/${IMAGEFILE}.sha256
+        installsha=${downloadpath}/${IMAGEFILE}/${IMAGEFILE}.img.zst.sha256
         verintg
         beginupd
     else

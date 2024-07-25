@@ -20,7 +20,7 @@ get_img_details(){
     if [[ "${os_tag_name}" == "${OS_TAG}" ]]; then
         echo "System up to date."
     elif [[ "${os_tag_name}" > "${OS_TAG}" ]]; then
-        echo -e "OS_TAG_NAME=$os_tag_name\nIMAGEFILE=$image_name\n=$download_img_url\nDL_SHA=$download_sha256_url\nGH_IMG_DL=$download_img_id\nGH_SHA_DL=$download_sha_id" > ${argdata}
+        echo -e "OS_TAG_NAME=$os_tag_name\nIMAGEFILE=$image_name\nGH_IMG_DL=$download_img_id\nGH_SHA_DL=$download_sha_id" > ${argdata}
         echo "Update available. OS Update: ${os_tag_name} (Image: ${image_name})"
     else
         echo -e "Your version (${OS_TAG}) is newer than currently available (${os_tag_name}).\nPlease wait for next update to appear available in branch \"${RELEASETYPE}\" for installation."

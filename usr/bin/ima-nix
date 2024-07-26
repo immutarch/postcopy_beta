@@ -9,7 +9,7 @@ install_nix(){
         HAS_CONFIGURED=true
     else
         echo "Initial Nix configuration required, please wait..."
-        NIX_CHANNEL_VER=$(curl -s https://nixos.wiki/wiki/Nix_channels | grep "Stable channels" | cut -d ' ' -f 3 | sed 's/<*code>//g' | sed 's/(//g' | sed 's/<.*)//g')
+        NIX_CHANNEL_VER=$(curl -s https://nixos.wiki/wiki/Nix_channels | grep "Most users will want the stable/large channel, currently" | cut -d ' ' -f 9 | sed 's/<*code>//g' | sed 's/(//g' | sed 's/<.*//g')
         nix-channel --add https://nixos.org/channels/${NIX_CHANNEL_VER} nixpkgs
         nix-channel --update
         HAS_CONFIGURED=true
@@ -60,7 +60,7 @@ cleanup_seq(){
 
 nix-check-for-updates(){
     CURRENT_CHANNEL_BRANCH=$(nix-channel --list | grep nixpkgs | cut -d '/' -f 5)
-    NIX_CHANNEL_VER=$(curl -s https://nixos.wiki/wiki/Nix_channels | grep "Stable channels" | cut -d ' ' -f 3 | sed 's/<*code>//g' | sed 's/(//g' | sed 's/<.*)//g')
+    NIX_CHANNEL_VER=$(curl -s https://nixos.wiki/wiki/Nix_channels | grep "Most users will want the stable/large channel, currently" | cut -d ' ' -f 9 | sed 's/<*code>//g' | sed 's/(//g' | sed 's/<.*//g')
     if [[ $CURRENT_CHANNEL_BRANCH != $NIX_CHANNEL_VER ]]; then
         echo "Current \"${CURRENT_CHANNEL_BRANCH}\" channel for nixpkgs is outdated. Updating to \"${NIX_CHANNEL_VER}\"..."
         nix-channel --remove nixpkgs

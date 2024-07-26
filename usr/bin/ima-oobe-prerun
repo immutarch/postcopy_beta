@@ -8,6 +8,7 @@
 
 IFUSER=$(id 1000 &>/dev/null || echo "fail")
 if [[ ! $IFUSER ]]; then
+    echo "A non-system user exists, skipping OOBE pre-run"
     systemctl disable ima-oobe-prerun
     exit 0
 else

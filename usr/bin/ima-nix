@@ -9,6 +9,17 @@ install_nix(){
         nix-channel --update
         HAS_CONFIGURED=true
     fi
+    if [[ "$(nix-channel --list | grep nixgl)" ]]; then
+        HAS_NIXGL_REPO_CONFIGURED=true
+    else
+        echo "NixGL channel wasn't found, it's required for initial graphical setup, please wait..."
+        nix-channel --add https://github.com/nix-community/nixGL/archive/main.tar.gz nixgl
+        nix-channel --update
+        HAS_NIXGL_REPO_CONFIGURED=true
+        nix-env -iA nixgl.auto.nixGLDefault
+        cleanup_seq
+        ima-nix-mesa-binder
+    fi
     if [[ "$HAS_CONFIGURED" == "true" ]]; then
         nix-env -iA nixpkgs.$1
         cleanup_seq

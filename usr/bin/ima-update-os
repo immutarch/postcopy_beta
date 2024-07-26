@@ -6,6 +6,10 @@ fi
 argdata=$1
 ready_watcher=/tmp/ima-update-ready-to-deploy
 downloadpath=/home/.ima/updatecontainer
+
+IMGTYPE=".img.zst"
+SIGTYPE="${SIGTYPE}.sha256"
+
 # We assume we entered this step only after confirming that we are okay to continue.
 verintg(){
     echo "Starting to update..."
@@ -59,12 +63,12 @@ beginupd(){
 if [[ -f ${argdata} ]]; then
     if [[ -f "${ready_watcher}" ]]; then
         source ${argdata}
-        installcontainer=${downloadpath}/${IMAGEFILE}/${IMAGEFILE}.img.zst
-        installsha=${downloadpath}/${IMAGEFILE}/${IMAGEFILE}.img.zst.sha256
+        installcontainer=${downloadpath}/${IMAGEFILE}/${IMAGEFILE}${IMGTYPE}
+        installsha=${downloadpath}/${IMAGEFILE}/${IMAGEFILE}${SIGTYPE}
         verintg
         beginupd
     else
-        echo -e "Arg data was found, but ready to update sentinel was not found.\nAre you sure that the update container download was completed?\nTry running [38;2;23;147;209mima-update check && ima-update[0m to verify container integrity again."
+        echo -e "Arg data was found, but ready to update sentinel was not found.\nAre you sure that the update container download was completed?\nTry running [38;2;23;147;209mima-update check && ima-update download-update[0m to verify container integrity again."
     fi
 else
     echo "No deploy arguments set."

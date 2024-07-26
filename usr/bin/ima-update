@@ -10,13 +10,16 @@ source /etc/ima-release
 endpoint=https://api.github.com/repos/immutarch/releases_${RELEASETYPE}/releases
 downloadpath=/home/.ima/updatecontainer
 
+IMGTYPE=".img.zst"
+SIGTYPE="${SIGTYPE}.sha256"
+
 get_img_details(){
     stdout=$(jq)
     stdout=$(echo "${stdout}" | jq 'del(.[] | select(.assets[].state != "uploaded"))')
     os_tag_name=$(echo "${stdout}" | jq -er '[ .[] | select(.prerelease==false) ] | first | .tag_name')
     image_name=$(echo "${stdout}" | jq 'del(.[] | select(.assets[].state != "uploaded"))' | jq -er '[ .[] | select(.prerelease==false) ] | first | .name')
-    download_img_id=$(echo "${stdout}" | jq -er '[ .[] | select(.prerelease==false) ] | first | .assets[] | .url' | head -n1)
-    download_sha_id=$(echo "${stdout}" | jq -er '[ .[] | select(.prerelease==false) ] | first | .assets[] | .url' | tail -n1)
+    download_img_id=$(echo "${stdout}" | jq -er '[ .[] | select(.prerelease==false) ] | first | .assets[] | select(.name | endswith("${IMGTYPE}")) | .url')
+    download_sha_id=$(echo "${stdout}" | jq -er '[ .[] | select(.prerelease==false) ] | first | .assets[] | select(.name | endswith("${SIGTYPE}")) | .url')
     if [[ "${os_tag_name}" == "${OS_TAG}" ]]; then
         echo "System up to date."
     elif [[ "${os_tag_name}" > "${OS_TAG}" ]]; then
@@ -38,8 +41,8 @@ updatecheck(){
 
 verintg(){
     echo "Verifying update file integrity..."
-    CURR_SHA=$(echo $(sha256sum ${downloadpath}/${IMAGEFILE}/${IMAGEFILE}.img.zst) | awk '{print $1}')
-    if [[ "${CURR_SHA}" == "$(cat ${downloadpath}/${IMAGEFILE}/${IMAGEFILE}.img.zst.sha256)" ]]; then
+    CURR_SHA=$(echo $(sha256sum ${downloadpath}/${IMAGEFILE}/${IMAGEFILE}${IMGTYPE}) | awk '{print $1}')
+    if [[ "${CURR_SHA}" == "$(cat ${downloadpath}/${IMAGEFILE}/${IMAGEFILE}${SIGTYPE})" ]]; then
         touch ${ready_watcher}
         echo "Update file download complete. The system is ready to update."
     else
@@ -51,13 +54,13 @@ verintg(){
 
 dlupd(){
     source ${argdata}
-    if [[ -f "${downloadpath}/${IMAGEFILE}/${IMAGEFILE}.img.zst" ]] && [[ -f "${downloadpath}/${IMAGEFILE}/${IMAGEFILE}.img.zst.sha256" ]]; then
+    if [[ -f "${downloadpath}/${IMAGEFILE}/${IMAGEFILE}${IMGTYPE}" ]] && [[ -f "${downloadpath}/${IMAGEFILE}/${IMAGEFILE}${SIGTYPE}" ]]; then
         verintg
     else
         mkdir -p ${downloadpath}/${IMAGEFILE}
         echo "Downloading update files..."
-        curl --http1.1 -L -H "Accept: application/octet-stream" -o ${downloadpath}/${IMAGEFILE}/${IMAGEFILE}.img.zst "${GH_IMG_DL}"
-        curl --http1.1 -L -H "Accept: application/octet-stream" -o ${downloadpath}/${IMAGEFILE}/${IMAGEFILE}.img.zst.sha256 "${GH_SHA_DL}"
+        curl --http1.1 -L -H "Accept: application/octet-stream" -o ${downloadpath}/${IMAGEFILE}/${IMAGEFILE}${IMGTYPE} "${GH_IMG_DL}"
+        curl --http1.1 -L -H "Accept: application/octet-stream" -o ${downloadpath}/${IMAGEFILE}/${IMAGEFILE}${SIGTYPE} "${GH_SHA_DL}"
         verintg
     fi
 }
@@ -66,7 +69,7 @@ if [ -n "$1" ]; then
     case "$1" in
     "check")
         rm -f ${argdata} ${ready_watcher}
-	    updatecheck
+        updatecheck
         ;;
     "download-update")
         if [[ -f "${argdata}" ]]; then

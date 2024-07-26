@@ -21,13 +21,13 @@ install_nix(){
         nix-channel --add https://github.com/nix-community/nixGL/archive/main.tar.gz nixgl
         nix-channel --update
         nix-env -iA nixgl.auto.nixGLDefault
-        echo "Updating application shortcuts..."
-        /usr/bin/kbuildsycoca* --noincremental
         cleanup_seq
         ima-nix-mesa-binder
     fi
     if [[ "$HAS_CONFIGURED" == "true" ]]; then
         nix-env -iA nixpkgs.$1
+        echo "Updating application shortcuts..."
+        /usr/bin/kbuildsycoca* --noincremental
         cleanup_seq
     fi
 }
@@ -57,7 +57,8 @@ ch_ic(){
 }
 
 cleanup_seq(){
-    nix-collect-garbage
+    echo "Cleaning up unrequired stuff in nix store..."
+    nix-collect-garbage 1>/dev/null
 }
 
 nix-check-for-updates(){

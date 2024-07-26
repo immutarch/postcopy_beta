@@ -8,7 +8,7 @@ ready_watcher=/tmp/ima-update-ready-to-deploy
 downloadpath=/home/.ima/updatecontainer
 
 IMGTYPE=".img.zst"
-SIGTYPE="${SIGTYPE}.sha256"
+SIGTYPE="${IMGTYPE}.sha256"
 
 # We assume we entered this step only after confirming that we are okay to continue.
 verintg(){

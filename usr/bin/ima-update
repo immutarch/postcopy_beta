@@ -11,7 +11,7 @@ endpoint=https://api.github.com/repos/immutarch/releases_${RELEASETYPE}/releases
 downloadpath=/home/.ima/updatecontainer
 
 IMGTYPE=".img.zst"
-SIGTYPE="${SIGTYPE}.sha256"
+SIGTYPE="${IMGTYPE}.sha256"
 
 get_img_details(){
     stdout=$(jq)

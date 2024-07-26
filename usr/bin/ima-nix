@@ -1,11 +1,16 @@
 #!/bin/bash
 
+NIXPKGS_ALLOW_UNFREE=1
+NIXPKGS_ALLOW_BROKEN=1
+
 install_nix(){
     if [[ "$(nix-channel --list | grep nixpkgs)" ]]; then
+        nix-check-for-updates
         HAS_CONFIGURED=true
     else
         echo "Initial Nix configuration required, please wait..."
-        nix-channel --add https://nixos.org/channels/nixpkgs-unstable
+        NIX_CHANNEL_VER=$(curl -s https://nixos.wiki/wiki/Nix_channels | grep "Stable channels" | cut -d ' ' -f 3 | sed 's/<*code>//g' | sed 's/(//g' | sed 's/<.*)//g')
+        nix-channel --add https://nixos.org/channels/${NIX_CHANNEL_VER} nixpkgs
         nix-channel --update
         HAS_CONFIGURED=true
     fi
@@ -42,7 +47,7 @@ nixgl-config(){
 }
 
 ch_ic(){
-    ping -c 1 github.com 1>/dev/null 
+    ping -c 1 github.com 1>/dev/null
     if [[ "$?" != "0" ]]; then
         echo "Please check your internet connection, unable to connect to GitHub."
         exit 125
@@ -51,6 +56,17 @@ ch_ic(){
 
 cleanup_seq(){
     nix-collect-garbage
+}
+
+nix-check-for-updates(){
+    CURRENT_CHANNEL_BRANCH=$(nix-channel --list | grep nixpkgs | cut -d '/' -f 5)
+    NIX_CHANNEL_VER=$(curl -s https://nixos.wiki/wiki/Nix_channels | grep "Stable channels" | cut -d ' ' -f 3 | sed 's/<*code>//g' | sed 's/(//g' | sed 's/<.*)//g')
+    if [[ $CURRENT_CHANNEL_BRANCH != $NIX_CHANNEL_VER ]]; then
+        echo "Current \"${CURRENT_CHANNEL_BRANCH}\" channel for nixpkgs is outdated. Updating to \"${NIX_CHANNEL_VER}\"..."
+        nix-channel --remove nixpkgs
+        nix-channel --add https://nixos.org/channels/${NIX_CHANNEL_VER} nixpkgs
+        nix-channel --update
+    fi
 }
 
 nix_uninstall(){

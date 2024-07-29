@@ -18,8 +18,8 @@ get_img_details(){
     stdout=$(echo "${stdout}" | jq 'del(.[] | select(.assets[].state != "uploaded"))')
     os_tag_name=$(echo "${stdout}" | jq -er '[ .[] | select(.prerelease==false) ] | first | .tag_name')
     image_name=$(echo "${stdout}" | jq 'del(.[] | select(.assets[].state != "uploaded"))' | jq -er '[ .[] | select(.prerelease==false) ] | first | .name')
-    download_img_id=$(echo "${stdout}" | jq -er '[ .[] | select(.prerelease==false) ] | first | .assets[] | select(.name | endswith("${IMGTYPE}")) | .url')
-    download_sha_id=$(echo "${stdout}" | jq -er '[ .[] | select(.prerelease==false) ] | first | .assets[] | select(.name | endswith("${SIGTYPE}")) | .url')
+    download_img_id=$(echo "${stdout}" | jq -er '[ .[] | select(.prerelease==false) ] | first | .assets[] | select(.name | endswith(".img.zst")) | .url')
+    download_sha_id=$(echo "${stdout}" | jq -er '[ .[] | select(.prerelease==false) ] | first | .assets[] | select(.name | endswith(".img.zst.sha256")) | .url')
     if [[ "${os_tag_name}" == "${OS_TAG}" ]]; then
         echo "System up to date."
     elif [[ "${os_tag_name}" > "${OS_TAG}" ]]; then

@@ -8,6 +8,9 @@ argdata=/tmp/ima-update-temparg
 ready_watcher=/tmp/ima-update-ready-to-deploy
 source /etc/ima-release
 
+
+rm -rf /tmp/update-log.txt
+
 endpoint=https://api.github.com/repos/immutarch/releases_${RELEASETYPE}/releases
 downloadpath=/home/.ima/updatecontainer
 
@@ -40,12 +43,11 @@ get_img_details(){
     download_sha_id=$(echo "${stdout}" | jq -er '[ .[] | select(.prerelease==false) ] | first | .assets[] | select(.name | endswith(".img.zst.sha256")) | .url')
     if [[ "${os_tag_name}" == "${OS_TAG}" ]]; then
         echo "System up to date."
+    elif [[ -d "/ima_root/rootfs/$image_name" ]]; then
+        echo "System up to date."
     elif [[ "${os_tag_name}" > "${OS_TAG}" ]]; then
         echo -e "OS_TAG_NAME=$os_tag_name\nIMAGEFILE=$image_name\nGH_IMG_DL=$download_img_id\nGH_SHA_DL=$download_sha_id" > ${argdata}
         echo "Update available. OS Update: ${os_tag_name} (Image: ${image_name})"
-    # Handle cases where OS update is already installed on system to avoid duplicate downloads
-    elif [[ -d "/ima_root/rootfs/$image_name" ]]; then
-        echo "System up to date."
     else
         echo -e "Your version (${OS_TAG}) is newer than currently available (${os_tag_name}).\nPlease wait for next update to appear available in branch \"${RELEASETYPE}\" for installation."
     fi

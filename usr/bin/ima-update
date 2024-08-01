@@ -1,4 +1,5 @@
 #!/bin/bash
+
 if [[ $EUID -ne 0 ]];
 then
     exec pkexec --disable-internal-agent "$0" "$@"
@@ -13,6 +14,23 @@ downloadpath=/home/.ima/updatecontainer
 IMGTYPE=".img.zst"
 SIGTYPE="${IMGTYPE}.sha256"
 
+clean_progress() {
+	local scale=$1
+	local postfix=$2
+	local last_value=$scale
+	while IFS= read -r line; do
+		value=$(( ${line}*${scale}/100 ))
+		if [ "$last_value" != "$value" ]; then
+            if [[ $WITH_SETTINGSAPP_EXPORTS ]]; then
+                echo "CPROGRESS=${value}"
+            else
+                echo ${value}${postfix}
+            fi
+			last_value=$value
+		fi
+	done
+}
+
 get_img_details(){
     stdout=$(jq)
     stdout=$(echo "${stdout}" | jq 'del(.[] | select(.assets[].state != "uploaded"))')
@@ -25,6 +43,9 @@ get_img_details(){
     elif [[ "${os_tag_name}" > "${OS_TAG}" ]]; then
         echo -e "OS_TAG_NAME=$os_tag_name\nIMAGEFILE=$image_name\nGH_IMG_DL=$download_img_id\nGH_SHA_DL=$download_sha_id" > ${argdata}
         echo "Update available. OS Update: ${os_tag_name} (Image: ${image_name})"
+    # Handle cases where OS update is already installed on system to avoid duplicate downloads
+    elif [[ -d "/ima_root/rootfs/$image_name" ]]; then
+        echo "System up to date."
     else
         echo -e "Your version (${OS_TAG}) is newer than currently available (${os_tag_name}).\nPlease wait for next update to appear available in branch \"${RELEASETYPE}\" for installation."
     fi
@@ -33,7 +54,11 @@ get_img_details(){
 updatecheck(){
     curl --http1.1 -L -s "${endpoint}" | get_img_details
     if [[ -f "${argdata}" ]]; then
-        exit 7
+        if [[ $WITH_SETTINGSAPP_EXPORTS ]]; then
+            exit 70
+        else
+            exit 7
+        fi
     else
         exit 1
     fi
@@ -46,6 +71,11 @@ verintg(){
         touch ${ready_watcher}
         echo "Update file download complete. The system is ready to update."
     else
+        if [[ $WITH_SETTINGSAPP_EXPORTS ]]; then
+                rm -rf ${downloadpath}/${IMAGEFILE}
+                echo "CMSG=Update failed. Unable to verify container integrity. Please try again."
+                exit 50
+        fi
         rm -rf ${downloadpath}/${IMAGEFILE}
         echo "Verification failed. Download contents erased."
         exit 1
@@ -59,13 +89,41 @@ dlupd(){
     else
         mkdir -p ${downloadpath}/${IMAGEFILE}
         echo "Downloading update files..."
-        curl --http1.1 -L -H "Accept: application/octet-stream" -o ${downloadpath}/${IMAGEFILE}/${IMAGEFILE}${IMGTYPE} "${GH_IMG_DL}"
-        curl --http1.1 -L -H "Accept: application/octet-stream" -o ${downloadpath}/${IMAGEFILE}/${IMAGEFILE}${SIGTYPE} "${GH_SHA_DL}"
+        if [[ $WITH_SETTINGSAPP_EXPORTS ]]; then
+            echo "CMSG=Downloading OS image ($IMAGEFILE)..."
+            curl --http1.1 -# -L -H "Accept: application/octet-stream" -o ${downloadpath}/${IMAGEFILE}/${IMAGEFILE}${IMGTYPE}  -C - "${GH_IMG_DL}" 2>&1 | stdbuf -oL tr '\r' '\n' | grep --line-buffered -oP '[0-9]*+(?=.[0-9])' | clean_progress 100 %
+            curl_exit_code=${PIPESTATUS[0]}
+            if [[ "$curl_exit_code" != "0" ]]; then
+                echo "CMSG=OS Image download abruptly cut"
+                exit 50
+            fi
+        else
+            curl --http1.1 -# -L -H "Accept: application/octet-stream" -o ${downloadpath}/${IMAGEFILE}/${IMAGEFILE}${IMGTYPE}  -C - "${GH_IMG_DL}" 2>&1 | stdbuf -oL tr '\r' '\n' | grep --line-buffered -oP '[0-9]*+(?=.[0-9])' | clean_progress 100 %
+        fi
+        if [[ $WITH_SETTINGSAPP_EXPORTS ]]; then
+            echo "CMSG=Downloading SHA for this image..."
+        fi
+        curl --http1.1 -# -L -H "Accept: application/octet-stream" -o ${downloadpath}/${IMAGEFILE}/${IMAGEFILE}${SIGTYPE} "${GH_SHA_DL}"
+        curl_exit_code=${PIPESTATUS[0]}
+            if [[ "$curl_exit_code" != "0" ]]; then
+                if [[ $WITH_SETTINGSAPP_EXPORTS ]]; then
+                    echo "CMSG=OS Image SHASUM download abruptly cut"
+                else
+                    echo "Failed to download SHA."
+                fi
+                exit 50
+            fi
         verintg
     fi
 }
 
 if [ -n "$1" ]; then
+
+    if [[ "$2" == "--settingsapp" ]]; then
+        WITH_SETTINGSAPP_EXPORTS=1
+        ADDITIONAL_SETTINGS_EXPORT="--settingsapp"
+    fi
+
     case "$1" in
     "check")
         rm -f ${argdata} ${ready_watcher}
@@ -81,13 +139,27 @@ if [ -n "$1" ]; then
         ;;
     "apply-now")
         if [[ -f "${ready_watcher}" ]]; then
-            ima-update-os ${argdata}
+            if [[ $WITH_SETTINGSAPP_EXPORTS ]]; then
+                echo "CMSG=Installing OS Image, please wait..."
+            fi
+            ima-update-os ${argdata} ${ADDITIONAL_SETTINGS_EXPORT}
+            if [[ $WITH_SETTINGSAPP_EXPORTS ]]; then
+                echo "CMSG=Installation finished! Press the \"Reboot\" button below to finalize."
+                exit 51
+            fi
             exit 7
         fi
         if [[ -f "${argdata}" ]]; then
             dlupd
             if [[ -f "${ready_watcher}" ]]; then
-                ima-update-os ${argdata}
+                if [[ $WITH_SETTINGSAPP_EXPORTS ]]; then
+                    echo "CMSG=Installing OS Image, please wait..."
+                fi
+                ima-update-os ${argdata} ${ADDITIONAL_SETTINGS_EXPORT}
+                if [[ $WITH_SETTINGSAPP_EXPORTS ]]; then
+                    echo "CMSG=Installation finished! Press the \"Reboot\" button below to finalize."
+                    exit 51
+                fi
                 exit 7
             fi
         else
@@ -95,7 +167,7 @@ if [ -n "$1" ]; then
             updatecheck
             dlupd
             if [[ -f "${ready_watcher}" ]]; then
-                ima-update-os ${argdata}
+                ima-update-os ${argdata} ${ADDITIONAL_SETTINGS_EXPORT}
                 exit 7
             fi
         fi

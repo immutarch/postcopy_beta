@@ -10,21 +10,34 @@ downloadpath=/home/.ima/updatecontainer
 IMGTYPE=".img.zst"
 SIGTYPE="${IMGTYPE}.sha256"
 
+if [[ "$2" == "--settingsapp" ]]; then
+    WITH_SETTINGSAPP_EXPORTS=1
+fi
+
+if [[ $WITH_SETTINGSAPP_EXPORTS ]]; then
+    msgprefix="CMSG="
+    exitcode_success=51
+    exitcode_fault=50
+else
+    exitcode_success=0
+    exitcode_fault=1
+fi
+
 # We assume we entered this step only after confirming that we are okay to continue.
 verintg(){
     echo "Starting to update..."
     if [[ -f "${installcontainer}" ]]; then
         CURR_SHA=$(echo $(sha256sum ${installcontainer}) | awk '{print $1}')
         if [[ "${CURR_SHA}" == "$(cat ${installsha})" ]]; then
-            echo "Validity matches. Continuing to next step."
+            echo -e "${msgprefix}Validity matches. Continuing to next step."
         else
             rm -rf ${downloadpath}/${IMAGEFILE}
-               echo "Verification failed. Download contents erased."
-               exit 1
+               echo "${msgprefix}Verification failed. Download contents erased."
+               exit ${exitcode_fault}
         fi
     else
-        echo "Unable to find update container. (Download issues?)"
-        exit 1
+        echo "${msgprefix}Unable to find update container. (Download issues?)"
+        exit ${exitcode_fault}
     fi
 }
 
@@ -32,30 +45,30 @@ cleandeployments(){
     source /etc/ima-release
     DEPLOYMENTS_PATH=$(btrfs subvolume list /ima_root | awk '{print $9}' | grep -v ${IMAGE_ID})
     if [[ -z "${DEPLOYMENTS_PATH}" ]]; then
-        echo "No unused deployments detected."
+        echo "${msgprefix}No unused deployments detected."
     else
         for deployment in $DEPLOYMENTS_PATH;
         do
-            echo "Removing unused deployment $deployment..."
+            echo "${msgprefix}Removing unused deployment $deployment..."
             btrfs subvolume delete /ima_root/$deployment
-            echo "Finished cleaning up deployments..."
-            echo "Going to next step."
+            echo "${msgprefix}Finished cleaning up deployments..."
+            echo "${msgprefix}Going to next step."
         done
     fi
 }
 
 finalizeupd(){
     ima-deploy switch rootfs/${IMAGEFILE}
-    echo "Cleaning up..."
+    echo "${msgprefix}Cleaning up..."
     rm -rf ${downloadpath}/${IMAGEFILE}/
-    echo "Update complete."
+    echo "${msgprefix}Update complete."
 }
 
 beginupd(){
     # Decompress update container
-    echo "Removing unused snapshots..."
+    echo "${msgprefix}Removing unused snapshots..."
     cleandeployments
-    echo "Installing OS Image ${STAGING_OS_TAG}..."
+    echo "${msgprefix}Installing OS Image ${STAGING_OS_TAG}..."
     ima-deploy install ${installcontainer}
     finalizeupd
 }
@@ -67,10 +80,11 @@ if [[ -f ${argdata} ]]; then
         installsha=${downloadpath}/${IMAGEFILE}/${IMAGEFILE}${SIGTYPE}
         verintg
         beginupd
+        exit ${exitcode_success}
     else
-        echo -e "Arg data was found, but ready to update sentinel was not found.\nAre you sure that the update container download was completed?\nTry running [38;2;23;147;209mima-update check && ima-update download-update[0m to verify container integrity again."
+        echo -e "${msgprefix}Arg data was found, but ready to update sentinel was not found.\nAre you sure that the update container download was completed?\nTry running [38;2;23;147;209mima-update check && ima-update download-update[0m to verify container integrity again."
     fi
 else
-    echo "No deploy arguments set."
-    exit 1
+    echo "${msgprefix}No deploy arguments set."
+    exit ${exitcode_fault}
 fi

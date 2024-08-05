@@ -62,10 +62,10 @@ get_img_details(){
     # Check if we have offering for incremental patch
     if [[ $INCREMENTAL_STORE ]]; then
         if [[ "${os_tag_name}" > "${OS_TAG}" ]]; then
-            if [[ "${OS_TAG}" == "${INCREMENTAL_QUERY_INDEX1}" ]] && [[ -d "/home/.ima/updatecontainer/$IMAGE_ID" ]]; then
+            if [[ "${IMAGE_ID}" == "${INCREMENTAL_QUERY_INDEX1}" ]] && [[ -d "/home/.ima/updatecontainer/$IMAGE_ID" ]]; then
                 echo -e "OS_TAG_NAME=$os_tag_name\nIMAGEFILE=$image_name\nGH_PATCH_DL=$incremental_index1\nAPPLY_PATCH=incremental_patch.index1\nAPPLYTO=$INCREMENTAL_APPLYTO_INDEX1\nDONTCLEANUP_PATCH=true" > ${argdata}
                 echo "Update available as a patch. OS Update: ${os_tag_name} (Image: ${image_name})"
-            elif [[ "${OS_TAG}" == "${INCREMENTAL_QUERY_INDEX2}" ]] && [[ -d "/home/.ima/updatecontainer/$IMAGE_ID" ]]; then
+            elif [[ "${IMAGE_ID}" == "${INCREMENTAL_QUERY_INDEX2}" ]] && [[ -d "/home/.ima/updatecontainer/$IMAGE_ID" ]]; then
                 echo -e "OS_TAG_NAME=$os_tag_name\nIMAGEFILE=$image_name\nGH_PATCH_DL=$incremental_index2\nAPPLY_PATCH=incremental_patch.index2\nAPPLYTO=$INCREMENTAL_APPLYTO_INDEX2\nDONTCLEANUP_PATCH=true" > ${argdata}
                 echo "Update available as a patch. OS Update: ${os_tag_name} (Image: ${image_name})"
             else

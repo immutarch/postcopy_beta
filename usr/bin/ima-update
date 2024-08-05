@@ -8,6 +8,9 @@ argdata=/tmp/ima-update-temparg
 ready_watcher=/tmp/ima-update-ready-to-deploy
 source /etc/ima-release
 
+if [[ -f "/tmp/patch.incremental_conditions" ]]; then
+    source /tmp/patch.incremental_conditions
+fi
 
 rm -rf /tmp/update-log.txt
 
@@ -41,11 +44,38 @@ get_img_details(){
     image_name=$(echo "${stdout}" | jq 'del(.[] | select(.assets[].state != "uploaded"))' | jq -er '[ .[] | select(.prerelease==false) ] | first | .name')
     download_img_id=$(echo "${stdout}" | jq -er '[ .[] | select(.prerelease==false) ] | first | .assets[] | select(.name | endswith(".img.zst")) | .url')
     download_sha_id=$(echo "${stdout}" | jq -er '[ .[] | select(.prerelease==false) ] | first | .assets[] | select(.name | endswith(".img.zst.sha256")) | .url')
+    incremental_conditions=$(echo "${stdout}" | jq -er '[ .[] | select(.prerelease==false) ] | first | .assets[] | select(.name | endswith(".incremental_conditions")) | .url')
+    if [[ $incremental_conditions ]]; then
+        incremental_index1=$(echo "${stdout}" | jq -er '[ .[] | select(.prerelease==false) ] | first | .assets[] | select(.name | endswith(".index1")) | .url')
+        incremental_index2=$(echo "${stdout}" | jq -er '[ .[] | select(.prerelease==false) ] | first | .assets[] | select(.name | endswith(".index2")) | .url')
+        curl --http1.1 -# -L -H "Accept: application/octet-stream" -o /tmp/patch.incremental_conditions  -C - "${incremental_conditions}" 2>&1 | stdbuf -oL tr '\r' '\n' | grep --line-buffered -oP '[0-9]*+(?=.[0-9])'
+        source /tmp/patch.incremental_conditions
+    fi
+
+    # Conditions where system is up to date, or where container is installed should be checked before anything else
     if [[ "${os_tag_name}" == "${OS_TAG}" ]]; then
         echo "System up to date."
     elif [[ -d "/ima_root/rootfs/$image_name" ]]; then
         echo "System up to date."
-    elif [[ "${os_tag_name}" > "${OS_TAG}" ]]; then
+    fi
+
+    # Check if we have offering for incremental patch
+    if [[ $INCREMENTAL_STORE ]]; then
+        if [[ "${os_tag_name}" > "${OS_TAG}" ]]; then
+            if [[ "${OS_TAG}" == "${INCREMENTAL_QUERY_INDEX1}" ]] && [[ -d "/home/.ima/updatecontainer/$IMAGE_ID" ]]; then
+                echo -e "OS_TAG_NAME=$os_tag_name\nIMAGEFILE=$image_name\nGH_PATCH_DL=$incremental_index1\nAPPLY_PATCH=incremental_patch.index1\nAPPLYTO=$INCREMENTAL_APPLYTO_INDEX1\nDONTCLEANUP_PATCH=true" > ${argdata}
+                echo "Update available as a patch. OS Update: ${os_tag_name} (Image: ${image_name})"
+            elif [[ "${OS_TAG}" == "${INCREMENTAL_QUERY_INDEX2}" ]] && [[ -d "/home/.ima/updatecontainer/$IMAGE_ID" ]]; then
+                echo -e "OS_TAG_NAME=$os_tag_name\nIMAGEFILE=$image_name\nGH_PATCH_DL=$incremental_index2\nAPPLY_PATCH=incremental_patch.index2\nAPPLYTO=$INCREMENTAL_APPLYTO_INDEX2\nDONTCLEANUP_PATCH=true" > ${argdata}
+                echo "Update available as a patch. OS Update: ${os_tag_name} (Image: ${image_name})"
+            else
+                NOINCREMENTAL=true
+            fi
+        fi
+    fi
+
+    # Check if we have full builds if rest don't match up
+    if [[ "${os_tag_name}" > "${OS_TAG}" ]]; then
         echo -e "OS_TAG_NAME=$os_tag_name\nIMAGEFILE=$image_name\nGH_IMG_DL=$download_img_id\nGH_SHA_DL=$download_sha_id" > ${argdata}
         echo "Update available. OS Update: ${os_tag_name} (Image: ${image_name})"
     else

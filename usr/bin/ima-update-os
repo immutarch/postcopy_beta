@@ -23,21 +23,27 @@ else
     exitcode_fault=1
 fi
 
+if [[ $DONTCLEANUP_PATCH ]]; then
+    IS_INCREMENTAL_INSTALL=true
+fi
+
 # We assume we entered this step only after confirming that we are okay to continue.
 verintg(){
     echo "Starting to update..."
-    if [[ -f "${installcontainer}" ]]; then
-        CURR_SHA=$(echo $(sha256sum ${installcontainer}) | awk '{print $1}')
-        if [[ "${CURR_SHA}" == "$(cat ${installsha})" ]]; then
-            echo -e "${msgprefix}Validity matches. Continuing to next step."
+    if [[ ! $IS_INCREMENTAL_INSTALL ]]; then
+        if [[ -f "${installcontainer}" ]]; then
+            CURR_SHA=$(echo $(sha256sum ${installcontainer}) | awk '{print $1}')
+            if [[ "${CURR_SHA}" == "$(cat ${installsha})" ]]; then
+                echo -e "${msgprefix}Validity matches. Continuing to next step."
+            else
+                rm -rf ${downloadpath}/${IMAGEFILE}
+                echo "${msgprefix}Verification failed. Download contents erased."
+                exit ${exitcode_fault}
+            fi
         else
-            rm -rf ${downloadpath}/${IMAGEFILE}
-               echo "${msgprefix}Verification failed. Download contents erased."
-               exit ${exitcode_fault}
+            echo "${msgprefix}Unable to find update container. (Download issues?)"
+            exit ${exitcode_fault}
         fi
-    else
-        echo "${msgprefix}Unable to find update container. (Download issues?)"
-        exit ${exitcode_fault}
     fi
 }
 
@@ -60,7 +66,12 @@ cleandeployments(){
 finalizeupd(){
     ima-deploy switch rootfs/${IMAGEFILE}
     echo "${msgprefix}Cleaning up..."
-    rm -rf ${downloadpath}/${IMAGEFILE}/
+    for containers in $(ls ${downloadpath})
+    do
+        if [[ "$containers" -ne "${IMAGEFILE}" ]]; then
+            rm -rf ${downloadpath}/${containers}
+        fi
+    done
     echo "${msgprefix}Update complete."
 }
 
@@ -68,18 +79,33 @@ beginupd(){
     # Decompress update container
     echo "${msgprefix}Removing unused snapshots..."
     cleandeployments
-    echo "${msgprefix}Installing OS Image ${STAGING_OS_TAG}..."
-    ima-deploy install ${installcontainer}
-    finalizeupd
+    if [[ $IS_INCREMENTAL_INSTALL ]]; then
+        echo "${msgprefix}Building a patched update container"
+        mkdir -p ${downloadpath}/${IMAGEFILE}
+        hpatchz ${downloadpath}/${IMAGE_ID}/${IMAGE_ID}.img ${downloadpath}/${IMAGEFILE}/${APPLY_PATCH} ${downloadpath}/${IMAGEFILE}/${IMAGEFILE}.img
+        rm -rf ${downloadpath}/${IMAGEFILE}/${APPLY_PATCH}
+        installcontainer=${downloadpath}/${IMAGEFILE}/${IMAGEFILE}.img
+        echo "${msgprefix}Installing OS Image ${IMAGEFILE}..."
+        ima-deploy install ${installcontainer}
+        finalizeupd
+    else
+        echo "${msgprefix}Installing OS Image ${IMAGEFILE}..."
+        ima-deploy install ${installcontainer}
+        finalizeupd
+    fi
 }
 
 if [[ -f ${argdata} ]]; then
     if [[ -f "${ready_watcher}" ]]; then
         source ${argdata}
-        installcontainer=${downloadpath}/${IMAGEFILE}/${IMAGEFILE}${IMGTYPE}
-        installsha=${downloadpath}/${IMAGEFILE}/${IMAGEFILE}${SIGTYPE}
-        verintg
-        beginupd
+        if [[ $IS_INCREMENTAL_INSTALL ]]; then
+            beginupd
+        else
+            installcontainer=${downloadpath}/${IMAGEFILE}/${IMAGEFILE}${IMGTYPE}
+            installsha=${downloadpath}/${IMAGEFILE}/${IMAGEFILE}${SIGTYPE}
+            verintg
+            beginupd
+        fi
         exit ${exitcode_success}
     else
         echo -e "${msgprefix}Arg data was found, but ready to update sentinel was not found.\nAre you sure that the update container download was completed?\nTry running [38;2;23;147;209mima-update check && ima-update download-update[0m to verify container integrity again."

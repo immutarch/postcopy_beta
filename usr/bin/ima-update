@@ -116,36 +116,56 @@ verintg(){
 
 dlupd(){
     source ${argdata}
-    if [[ -f "${downloadpath}/${IMAGEFILE}/${IMAGEFILE}${IMGTYPE}" ]] && [[ -f "${downloadpath}/${IMAGEFILE}/${IMAGEFILE}${SIGTYPE}" ]]; then
-        verintg
-    else
+    if [[ $DONTCLEANUP_PATCH ]]; then
         mkdir -p ${downloadpath}/${IMAGEFILE}
-        echo "Downloading update files..."
-        if [[ $WITH_SETTINGSAPP_EXPORTS ]]; then
-            echo "CMSG=Downloading OS image ($IMAGEFILE)..."
-            curl --http1.1 -# -L -H "Accept: application/octet-stream" -o ${downloadpath}/${IMAGEFILE}/${IMAGEFILE}${IMGTYPE}  -C - "${GH_IMG_DL}" 2>&1 | stdbuf -oL tr '\r' '\n' | grep --line-buffered -oP '[0-9]*+(?=.[0-9])' | clean_progress 100 %
-            curl_exit_code=${PIPESTATUS[0]}
-            if [[ "$curl_exit_code" != "0" ]]; then
-                echo "CMSG=OS Image download abruptly cut"
-                exit 50
-            fi
-        else
-            curl --http1.1 -# -L -H "Accept: application/octet-stream" -o ${downloadpath}/${IMAGEFILE}/${IMAGEFILE}${IMGTYPE}  -C - "${GH_IMG_DL}" 2>&1 | stdbuf -oL tr '\r' '\n' | grep --line-buffered -oP '[0-9]*+(?=.[0-9])' | clean_progress 100 %
-        fi
-        if [[ $WITH_SETTINGSAPP_EXPORTS ]]; then
-            echo "CMSG=Downloading SHA for this image..."
-        fi
-        curl --http1.1 -# -L -H "Accept: application/octet-stream" -o ${downloadpath}/${IMAGEFILE}/${IMAGEFILE}${SIGTYPE} "${GH_SHA_DL}"
-        curl_exit_code=${PIPESTATUS[0]}
-            if [[ "$curl_exit_code" != "0" ]]; then
-                if [[ $WITH_SETTINGSAPP_EXPORTS ]]; then
-                    echo "CMSG=OS Image SHASUM download abruptly cut"
-                else
-                    echo "Failed to download SHA."
+            echo "Downloading patch files..."
+            if [[ $WITH_SETTINGSAPP_EXPORTS ]]; then
+                echo "CMSG=Downloading OS patch ($IMAGEFILE)..."
+                curl --http1.1 -# -L -H "Accept: application/octet-stream" -o ${downloadpath}/${IMAGEFILE}/${APPLY_PATCH}  -C - "${GH_PATCH_DL}" 2>&1 | stdbuf -oL tr '\r' '\n' | grep --line-buffered -oP '[0-9]*+(?=.[0-9])' | clean_progress 100 %
+                curl_exit_code=${PIPESTATUS[0]}
+                if [[ "$curl_exit_code" != "0" ]]; then
+                    echo "CMSG=OS Patch image download abruptly cut"
+                    exit 50
                 fi
-                exit 50
+                touch ${ready_watcher}
+                echo "Update patch file download complete. The system is ready to update."
+            else
+                curl --http1.1 -# -L -H "Accept: application/octet-stream" -o ${downloadpath}/${IMAGEFILE}/${APPLY_PATCH}  -C - "${GH_PATCH_DL}" 2>&1 | stdbuf -oL tr '\r' '\n' | grep --line-buffered -oP '[0-9]*+(?=.[0-9])' | clean_progress 100 %
+                touch ${ready_watcher}
+                echo "Update patch file download complete. The system is ready to update."
             fi
-        verintg
+    else
+        if [[ -f "${downloadpath}/${IMAGEFILE}/${IMAGEFILE}${IMGTYPE}" ]] && [[ -f "${downloadpath}/${IMAGEFILE}/${IMAGEFILE}${SIGTYPE}" ]]; then
+            verintg
+        else
+            mkdir -p ${downloadpath}/${IMAGEFILE}
+            echo "Downloading update files..."
+            if [[ $WITH_SETTINGSAPP_EXPORTS ]]; then
+                echo "CMSG=Downloading OS image ($IMAGEFILE)..."
+                curl --http1.1 -# -L -H "Accept: application/octet-stream" -o ${downloadpath}/${IMAGEFILE}/${IMAGEFILE}${IMGTYPE}  -C - "${GH_IMG_DL}" 2>&1 | stdbuf -oL tr '\r' '\n' | grep --line-buffered -oP '[0-9]*+(?=.[0-9])' | clean_progress 100 %
+                curl_exit_code=${PIPESTATUS[0]}
+                if [[ "$curl_exit_code" != "0" ]]; then
+                    echo "CMSG=OS Image download abruptly cut"
+                    exit 50
+                fi
+            else
+                curl --http1.1 -# -L -H "Accept: application/octet-stream" -o ${downloadpath}/${IMAGEFILE}/${IMAGEFILE}${IMGTYPE}  -C - "${GH_IMG_DL}" 2>&1 | stdbuf -oL tr '\r' '\n' | grep --line-buffered -oP '[0-9]*+(?=.[0-9])' | clean_progress 100 %
+            fi
+            if [[ $WITH_SETTINGSAPP_EXPORTS ]]; then
+                echo "CMSG=Downloading SHA for this image..."
+            fi
+            curl --http1.1 -# -L -H "Accept: application/octet-stream" -o ${downloadpath}/${IMAGEFILE}/${IMAGEFILE}${SIGTYPE} "${GH_SHA_DL}"
+            curl_exit_code=${PIPESTATUS[0]}
+                if [[ "$curl_exit_code" != "0" ]]; then
+                    if [[ $WITH_SETTINGSAPP_EXPORTS ]]; then
+                        echo "CMSG=OS Image SHASUM download abruptly cut"
+                    else
+                        echo "Failed to download SHA."
+                    fi
+                    exit 50
+                fi
+            verintg
+        fi
     fi
 }
 

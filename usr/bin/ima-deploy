@@ -34,7 +34,6 @@ install_subvolume() {
     fi
 
     btrfs receive ${SUBVOLUME_CONTAINER_PATH} < "$file"
-    rm ${file}
     echo "Subvolume installed successfully."
 }
 

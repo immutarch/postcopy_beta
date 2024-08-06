@@ -16,33 +16,6 @@ run_latehook() {
         fi
     fi
 
-    run_factory-reset(){
-        msg ":: the system is scheduled for a factory reset, initiating..."
-        if home_source="$(findmnt -snero source --tab-file="$realtab" -T /home)"; then
-            mountopts_home="$(findmnt -snero options --tab-file="$realtab" -T /home)"
-            passno="$(findmnt -snero passno --tab-file="$realtab" -T /home 2>/dev/null)"
-            msg ":: mounting '$home_source' on /home"
-            mount "$home_source" /new_root/home -o "$mountopts_home"
-            msg ":: Erasing user content, please wait..."
-            rm -rf "$mountopts_home"/{*,.*}
-            msg ":: Erasing user-created system content, please wait..."
-            rm -rf /new_root/var/{*,.*}
-            msg ":: Reset complete, continuing to boot"
-            umount -l "$mountopts_home"
-        fi
-    }
-
-    # Handle external rootstrap targets
-    targets="factory-reset bootctl-merge"
-    targets_dir="/new_root/var/overlays/etc/upper/rootstrap-targets/"
-
-    for target in $targets
-    do
-        if [[ -f "${targets_dir}${target}" ]]; then
-            run_${target}()
-        fi
-    done
-
     # Check if /new_root/var/overlays/etc/{upper,work} exist, and create them if not
     if [ ! -d "/new_root/var/overlays/etc/upper" ]; then
         mkdir -p /new_root/var/overlays/etc/upper

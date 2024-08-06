@@ -16,9 +16,13 @@ set_hostname(){
 }
 
 write_general(){
+    if [[ ! $(touch "$(dirname "$1")/tempfile" > /dev/null 2>&1) ]]; then
+        echo "This directory is read-only. You may override that by using ima-readonly {disable/enable}."
+    else
+    rm "$(dirname "$1")/tempfile"
         mkdir -p "$(dirname "$1")" && echo "$2" > "$1"
+    fi
 }
-
 if [[ $1 ]]; then
     if [[ $2 ]]; then
         if [[ $1 == *"tmpfiles.d"* ]]; then

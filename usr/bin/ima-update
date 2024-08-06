@@ -65,9 +65,11 @@ get_img_details(){
             if [[ "${IMAGE_ID}" == "${INCREMENTAL_QUERY_INDEX1}" ]] && [[ -d "/home/.ima/updatecontainer/$IMAGE_ID" ]]; then
                 echo -e "OS_TAG_NAME=$os_tag_name\nIMAGEFILE=$image_name\nGH_PATCH_DL=$incremental_index1\nAPPLY_PATCH=incremental_patch.index1\nAPPLYTO=$INCREMENTAL_APPLYTO_INDEX1\nDONTCLEANUP_PATCH=true" > ${argdata}
                 echo "Update available as a patch. OS Update: ${os_tag_name} (Image: ${image_name})"
+                exit
             elif [[ "${IMAGE_ID}" == "${INCREMENTAL_QUERY_INDEX2}" ]] && [[ -d "/home/.ima/updatecontainer/$IMAGE_ID" ]]; then
                 echo -e "OS_TAG_NAME=$os_tag_name\nIMAGEFILE=$image_name\nGH_PATCH_DL=$incremental_index2\nAPPLY_PATCH=incremental_patch.index2\nAPPLYTO=$INCREMENTAL_APPLYTO_INDEX2\nDONTCLEANUP_PATCH=true" > ${argdata}
                 echo "Update available as a patch. OS Update: ${os_tag_name} (Image: ${image_name})"
+                exit
             else
                 NOINCREMENTAL=true
             fi
